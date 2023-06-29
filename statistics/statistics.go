@@ -1,6 +1,6 @@
 package statistics
 
-import "yandex-direct-sdk/common"
+import "github.com/zfullio/yandex-direct-sdk/common"
 
 type ReportDefinition struct {
 	Selection         *SelectionCriteria  `json:"SelectionCriteria,omitempty"`
@@ -20,10 +20,10 @@ type ReportDefinition struct {
 type AttributionModel string
 
 const (
-	FC   AttributionModel = "FC"   // первый переход.
-	LC   AttributionModel = "LC"   // последний переход.
-	LSC  AttributionModel = "LSC"  // последний значимый переход.
-	LYDC AttributionModel = "LYDC" // последний переход из Яндекс Директа.
+	FC   AttributionModel = "FC"   // Первый переход.
+	LC   AttributionModel = "LC"   // Последний переход.
+	LSC  AttributionModel = "LSC"  // Последний значимый переход.
+	LYDC AttributionModel = "LYDC" // Последний переход из Яндекс Директа.
 )
 
 type Field string
@@ -43,16 +43,16 @@ type Filter struct {
 type FilterOperator string
 
 const (
-	Equals                        FilterOperator = "EQUALS"                              // значение поля равно значению из Values
-	NotEquals                     FilterOperator = "NOT_EQUALS"                          // значение поля не равно значению из Values
-	In                            FilterOperator = "IN"                                  // значение поля равно любому значению из Values
-	NotIn                         FilterOperator = "NOT_IN"                              // значение поля не равно ни одному значению из Values
-	LessThan                      FilterOperator = "LESS_THAN"                           // значение поля меньше значения из Values
-	GreaterThan                   FilterOperator = "GREATER_THAN"                        // значение поля больше значения из Values
-	StartsWithIgnoreCase          FilterOperator = "STARTS_WITH_IGNORE_CASE"             // значение поля начинается с значения из Values
-	DoesNotStartWithIgnoreCase    FilterOperator = "DOES_NOT_START_WITH_IGNORE_CASE"     // значение поля не начинается с значения из Values
-	StartsWithAnyIgnoreCase       FilterOperator = "STARTS_WITH_ANY_IGNORE_CASE"         // значение поля начинается с любого из значений, указанных в Values
-	DoesNotStartWithAllIgnoreCase FilterOperator = "DOES_NOT_START_WITH_ALL_IGNORE_CASE" // значение поля не начинается ни с одного из значений, указанных в Values
+	Equals                        FilterOperator = "EQUALS"                              // Значение поля равно значению из Values
+	NotEquals                     FilterOperator = "NOT_EQUALS"                          // Значение поля не равно значению из Values
+	In                            FilterOperator = "IN"                                  // Значение поля равно любому значению из Values
+	NotIn                         FilterOperator = "NOT_IN"                              // Значение поля не равно ни одному значению из Values
+	LessThan                      FilterOperator = "LESS_THAN"                           // Значение поля меньше значения из Values
+	GreaterThan                   FilterOperator = "GREATER_THAN"                        // Значение поля больше значения из Values
+	StartsWithIgnoreCase          FilterOperator = "STARTS_WITH_IGNORE_CASE"             // Значение поля начинается со значения из Values
+	DoesNotStartWithIgnoreCase    FilterOperator = "DOES_NOT_START_WITH_IGNORE_CASE"     // Значение поля не начинается со значения из Values
+	StartsWithAnyIgnoreCase       FilterOperator = "STARTS_WITH_ANY_IGNORE_CASE"         // Значение поля начинается с любого из значений, указанных в Values
+	DoesNotStartWithAllIgnoreCase FilterOperator = "DOES_NOT_START_WITH_ALL_IGNORE_CASE" // Значение поля не начинается ни с одного из значений, указанных в Values
 )
 
 type OrderBy struct {
@@ -63,8 +63,8 @@ type OrderBy struct {
 type OrderBySortOrder string
 
 const (
-	ASCENDING  OrderBySortOrder = "ASCENDING"  // по возрастанию
-	DESCENDING OrderBySortOrder = "DESCENDING" // по убыванию
+	ASCENDING  OrderBySortOrder = "ASCENDING"  // По возрастанию
+	DESCENDING OrderBySortOrder = "DESCENDING" // По убыванию
 )
 
 type ReportType string

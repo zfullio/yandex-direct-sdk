@@ -2,15 +2,16 @@ package yandex_direct_sdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zfullio/yandex-direct-sdk/common"
+	"github.com/zfullio/yandex-direct-sdk/statistics"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
-	"yandex-direct-sdk/common"
-	"yandex-direct-sdk/statistics"
 )
 
 type client struct {
@@ -47,6 +48,7 @@ func NewClient(tr *http.Client, login string, token *string, app *App, sandbox b
 			host:  SANDBOX,
 		}
 	}
+
 	return &client{
 		Tr:    tr,
 		Login: login,
@@ -58,7 +60,6 @@ func NewClient(tr *http.Client, login string, token *string, app *App, sandbox b
 			reportsInQueue: 0,
 		},
 	}
-
 }
 
 func (c *client) buildHeader(req *http.Request) {
@@ -71,7 +72,7 @@ type Payload struct {
 	Method string `json:"method"`
 	Params struct {
 		Ads []struct {
-			AdGroupId int `json:"AdGroupId"`
+			AdGroupID int `json:"AdGroupId"`
 			TextAd    struct {
 				Text   string `json:"Text"`
 				Title  string `json:"Title"`
@@ -105,6 +106,7 @@ func (c *client) GetReport(dir string, typeReport statistics.ReportType, dateRan
 		if err != nil {
 			return "", fmt.Errorf("createGetReportRequest: %w", err)
 		}
+
 		c.waitInfo(reportName)
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
 
@@ -122,7 +124,7 @@ func (c *client) GetReport(dir string, typeReport statistics.ReportType, dateRan
 
 			return file, nil
 		case http.StatusCreated, http.StatusAccepted:
-			err := c.waitInit(reportName, resp)
+			err := c.waitInit(resp)
 			if err != nil {
 				return "", fmt.Errorf("waitInit: %w", err)
 			}
@@ -130,14 +132,15 @@ func (c *client) GetReport(dir string, typeReport statistics.ReportType, dateRan
 			return "", fmt.Errorf("internal server error")
 		case http.StatusBadRequest:
 			fmt.Println(resp.Status)
+
 			data, err := c.badRequestPrepare(resp)
 			if err != nil {
 				return "", fmt.Errorf("cannot prepare bad request: %w", err)
 			}
 
-			return "", fmt.Errorf("ошибка отчета %s\n", data.Error.ErrorDetail)
+			return "", fmt.Errorf("ошибка отчета %s", data.Error.ErrorDetail)
 		default:
-			return "", fmt.Errorf("Статус код сервера при получении отчета %v\n", resp.StatusCode)
+			return "", fmt.Errorf("cтатус код сервера при получении отчета %v", resp.StatusCode)
 		}
 	}
 }
@@ -149,13 +152,13 @@ type Request struct {
 type Response struct {
 	Error struct {
 		ErrorDetail string `json:"error_detail"`
-		RequestId   string `json:"request_id"`
+		RequestID   string `json:"request_id"`
 		ErrorCode   string `json:"error_code"`
 		ErrorString string `json:"error_string"`
 	} `json:"error"`
 }
 
-func (c *client) createGetReportRequest(params statistics.ReportDefinition) (*http.Request, error) {
+func (c *client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
 	reqContent := Request{Params: params}
 
 	body, err := json.Marshal(reqContent)
@@ -163,7 +166,7 @@ func (c *client) createGetReportRequest(params statistics.ReportDefinition) (*ht
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, "https://api.direct.yandex.com/json/v5/reports", bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.direct.yandex.com/json/v5/reports", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +183,7 @@ func (c *client) badRequestPrepare(resp *http.Response) (Response, error) {
 	}
 
 	var data Response
+
 	err = json.Unmarshal(responseBody, &data)
 	if err != nil {
 		return Response{}, fmt.Errorf("cant unmarshal response body: %w", err)
@@ -188,20 +192,25 @@ func (c *client) badRequestPrepare(resp *http.Response) (Response, error) {
 	return data, nil
 }
 
-func (c *client) waitInit(reportName string, resp *http.Response) error {
+func (c *client) waitInit(resp *http.Response) error {
+	if resp == nil {
+		return fmt.Errorf("response is nil")
+	}
+
 	retryIn, err := strconv.Atoi(resp.Header.Get("retryIn"))
 	if err != nil {
-		return fmt.Errorf("retryIn: %v", err)
+		return fmt.Errorf("retryIn: %w", err)
 	}
 
 	c.statisticsLimit.retryInterval = int32(retryIn)
 
 	reportsInQueue, err := strconv.Atoi(resp.Header.Get("reportsInQueue"))
 	if err != nil {
-		return fmt.Errorf("reportsInQueue: %v", err)
+		return fmt.Errorf("reportsInQueue: %w", err)
 	}
 
 	c.statisticsLimit.reportsInQueue = int8(reportsInQueue)
+
 	return nil
 }
 
@@ -216,6 +225,10 @@ func (c *client) waitInfo(reportName string) {
 }
 
 func createTSVFile(dir string, filename string, resp *http.Response) (string, error) {
+	if resp == nil {
+		return "", fmt.Errorf("response is nil")
+	}
+
 	f, err := os.CreateTemp(dir, fmt.Sprintf("%s_*.tsv", filename))
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
@@ -234,5 +247,4 @@ func createTSVFile(dir string, filename string, resp *http.Response) (string, er
 	}
 
 	return f.Name(), nil
-
 }

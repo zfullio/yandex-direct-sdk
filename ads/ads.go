@@ -1,8 +1,8 @@
 package ads
 
 import (
-	"yandex-direct-sdk/common"
-	"yandex-direct-sdk/extension"
+	"github.com/zfullio/yandex-direct-sdk/common"
+	"github.com/zfullio/yandex-direct-sdk/extension"
 )
 
 type Request struct {

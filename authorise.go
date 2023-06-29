@@ -16,19 +16,19 @@ type AuthByCode struct {
 	ExpiresIn       int    `json:"expires_in"`
 	Interval        int    `json:"interval"`
 	UserCode        string `json:"user_code"`
-	VerificationUrl string `json:"verification_url"`
+	VerificationURL string `json:"verification_url"`
 }
 
-type errorResponse struct {
+type responseError struct {
 	Err string `json:"error"`
 	Msg string `json:"error_description"`
 }
 
-func (e errorResponse) Error() string {
+func (e responseError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Err, e.Msg)
 }
 
-var ErrAuthorisationPending = errorResponse{
+var ErrAuthorisationPending = responseError{
 	Err: "authorization_pending",
 	Msg: "User has not yet authorized your application",
 }
@@ -41,18 +41,19 @@ type Token struct {
 	Scope        string `json:"scope"`
 }
 
-func (c *client) Authorise() (err error) {
+func (c *client) Authorise() error {
 	authData, err := c.GetAccessCode()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("user code: %s | %s \n", authData.UserCode, authData.VerificationUrl)
+	fmt.Printf("user code: %s | %s \n", authData.UserCode, authData.VerificationURL)
 
 	token := Token{}
 	done := make(chan bool, 1)
 	duration := time.Duration(authData.Interval) * time.Second
 	ticker := time.NewTicker(duration)
+
 	defer ticker.Stop()
 
 outerLoop:
@@ -64,12 +65,14 @@ outerLoop:
 			token, err = c.GetTokenByCode(authData)
 			if errors.Is(err, ErrAuthorisationPending) {
 				fmt.Println(err)
+
 				continue
 			} else if err != nil {
 				return err
 			}
 			if token.AccessToken != "" {
 				done <- true
+
 				break outerLoop
 			}
 		}
@@ -161,7 +164,8 @@ func (c *client) GetTokenByCode(code AuthByCode) (token Token, err error) {
 		return token, err
 	}
 
-	respErr := errorResponse{}
+	respErr := responseError{}
+
 	err = json.Unmarshal(body, &respErr)
 	if err != nil {
 		return token, err
