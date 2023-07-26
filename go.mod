@@ -1,3 +1,3 @@
-module github.com/zfullio/yandex-direct-sdk
+module github.com/mg-realcom/yandex-direct-sdk
 
 go 1.18

@@ -1,6 +1,6 @@
 package statistics
 
-import "github.com/zfullio/yandex-direct-sdk/common"
+import "github.com/mg-realcom/yandex-direct-sdk/common"
 
 type ReportDefinition struct {
 	Selection         *SelectionCriteria  `json:"SelectionCriteria,omitempty"`
