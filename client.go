@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type client struct {
+type Client struct {
 	Tr              *http.Client
 	Login           string
 	Token           *string
@@ -40,16 +40,16 @@ const (
 	SANDBOX environment = "api-sandbox.direct.yandex.com"
 )
 
-func NewClient(tr *http.Client, login string, token *string, app *App, sandbox bool) *client {
+func NewClient(tr *http.Client, login string, token *string, app *App, sandbox bool) *Client {
 	if sandbox {
-		return &client{
+		return &Client{
 			Login: login,
 			Token: token,
 			host:  SANDBOX,
 		}
 	}
 
-	return &client{
+	return &Client{
 		Tr:    tr,
 		Login: login,
 		Token: token,
@@ -62,10 +62,12 @@ func NewClient(tr *http.Client, login string, token *string, app *App, sandbox b
 	}
 }
 
-func (c *client) buildHeader(req *http.Request) {
+func (c *Client) buildHeader(req *http.Request) {
 	req.Header.Add("Authorization", "Bearer "+*c.Token)
 	req.Header.Add("Client-Login", c.Login)
 	req.Header.Add("Accept-Language", "ru")
+	req.Header.Add("skipReportHeader", "true")
+	req.Header.Add("skipReportSummary", "true")
 }
 
 type Payload struct {
@@ -83,15 +85,14 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *client) GetReport(dir string, typeReport statistics.ReportType, dateRange statistics.DateRange, fields []string) (string, error) {
+func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, dateRange statistics.DateRange, fields []string, filter []statistics.Filter) (string, error) {
 	t := time.Now().Format("2006-01-02")
-	reportName := fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, t, typeReport, dateRange.From, dateRange.To)
-	fmt.Printf("reportName: %s\n", reportName)
+	reportName := fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
 	params := statistics.ReportDefinition{
 		Selection: &statistics.SelectionCriteria{
 			DateFrom: dateRange.From,
 			DateTo:   dateRange.To,
-			Filter:   nil,
+			Filter:   filter,
 		},
 		FieldNames:    fields,
 		ReportName:    reportName,
@@ -100,9 +101,9 @@ func (c *client) GetReport(dir string, typeReport statistics.ReportType, dateRan
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.YES,
 	}
-
+	ctx := context.Background()
 	for {
-		req, err := c.createGetReportRequest(params)
+		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
 			return "", fmt.Errorf("createGetReportRequest: %w", err)
 		}
@@ -158,7 +159,7 @@ type Response struct {
 	} `json:"error"`
 }
 
-func (c *client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
+func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
 	reqContent := Request{Params: params}
 
 	body, err := json.Marshal(reqContent)
@@ -176,7 +177,7 @@ func (c *client) createGetReportRequest(ctx context.Context, params statistics.R
 	return req, nil
 }
 
-func (c *client) badRequestPrepare(resp *http.Response) (Response, error) {
+func (c *Client) badRequestPrepare(resp *http.Response) (Response, error) {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Response{}, fmt.Errorf("cant read response body: %w", err)
@@ -192,7 +193,7 @@ func (c *client) badRequestPrepare(resp *http.Response) (Response, error) {
 	return data, nil
 }
 
-func (c *client) waitInit(resp *http.Response) error {
+func (c *Client) waitInit(resp *http.Response) error {
 	if resp == nil {
 		return fmt.Errorf("response is nil")
 	}
@@ -214,9 +215,9 @@ func (c *client) waitInit(resp *http.Response) error {
 	return nil
 }
 
-func (c *client) waitInfo(reportName string) {
+func (c *Client) waitInfo(reportName string) {
 	if c.statisticsLimit.retryInterval > 1 {
-		fmt.Printf("Повтор запроса на на отчет %s через %v\n", reportName, c.statisticsLimit.retryInterval)
+		fmt.Printf("Повтор запроса на отчет %s через %v\n", reportName, c.statisticsLimit.retryInterval)
 	}
 
 	if c.statisticsLimit.reportsInQueue > 1 {

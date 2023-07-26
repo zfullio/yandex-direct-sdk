@@ -35,9 +35,9 @@ type SelectionCriteria struct {
 }
 
 type Filter struct {
-	Fields   string         `json:"fields"`
-	Operator FilterOperator `json:"operator"`
-	Values   []string       `json:"values"`
+	Fields   string         `json:"Field"`
+	Operator FilterOperator `json:"Operator"`
+	Values   []string       `json:"Values"`
 }
 
 type FilterOperator string

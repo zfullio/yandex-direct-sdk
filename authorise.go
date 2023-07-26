@@ -41,7 +41,7 @@ type Token struct {
 	Scope        string `json:"scope"`
 }
 
-func (c *client) Authorise() error {
+func (c *Client) Authorise() error {
 	authData, err := c.GetAccessCode()
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ outerLoop:
 	return nil
 }
 
-func (c *client) GetAccessCode() (auth AuthByCode, err error) {
+func (c *Client) GetAccessCode() (auth AuthByCode, err error) {
 	host := "oauth.yandex.ru"
 
 	reqAccessURL := url.URL{
@@ -129,7 +129,7 @@ func (c *client) GetAccessCode() (auth AuthByCode, err error) {
 	return auth, err
 }
 
-func (c *client) GetTokenByCode(code AuthByCode) (token Token, err error) {
+func (c *Client) GetTokenByCode(code AuthByCode) (token Token, err error) {
 	host := "oauth.yandex.ru"
 
 	reqAccessURL := url.URL{
