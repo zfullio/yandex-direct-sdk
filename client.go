@@ -85,7 +85,7 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
+func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange, dtRangeType statistics.DateRangeType) (string, error) {
 	t := time.Now().Format("2006-01-02")
 	reportName := fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
 	params := statistics.ReportDefinition{
@@ -98,7 +98,7 @@ func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.Repor
 		Page:          &common.Page{Limit: 10000000, Offset: 0},
 		ReportName:    reportName,
 		ReportType:    typeReport,
-		DateRangeType: statistics.DateRangeAuto,
+		DateRangeType: dtRangeType,
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.YES,
 	}
