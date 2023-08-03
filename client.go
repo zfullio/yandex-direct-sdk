@@ -85,7 +85,7 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, dateRange statistics.DateRange, fields []string, filter []statistics.Filter) (string, error) {
+func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
 	t := time.Now().Format("2006-01-02")
 	reportName := fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
 	params := statistics.ReportDefinition{
@@ -95,12 +95,14 @@ func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.Repor
 			Filter:   filter,
 		},
 		FieldNames:    fields,
+		Page:          &common.Page{Limit: 10000000, Offset: 0},
 		ReportName:    reportName,
 		ReportType:    typeReport,
-		DateRangeType: statistics.DateRangeCustomDate,
+		DateRangeType: statistics.DateRangeAuto,
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.YES,
 	}
+
 	ctx := context.Background()
 	for {
 		req, err := c.createGetReportRequest(ctx, params)
@@ -166,7 +168,6 @@ func (c *Client) createGetReportRequest(ctx context.Context, params statistics.R
 	if err != nil {
 		return nil, err
 	}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.direct.yandex.com/json/v5/reports", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
