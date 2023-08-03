@@ -87,6 +87,11 @@ type Payload struct {
 
 func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange, dtRangeType statistics.DateRangeType) (string, error) {
 	t := time.Now().Format("2006-01-02")
+	if dateRange.From == "" || dateRange.To == "" {
+		dateRange.From = "auto"
+		dateRange.To = "update"
+
+	}
 	reportName := fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
 	params := statistics.ReportDefinition{
 		Selection: &statistics.SelectionCriteria{
