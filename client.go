@@ -85,13 +85,16 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange, dtRangeType statistics.DateRangeType) (string, error) {
+func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
 	t := time.Now().Format("2006-01-02")
 	var reportName string
+	var dtRangeType statistics.DateRangeType
 	if dateRange.From == "" || dateRange.To == "" {
 		reportName = fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, "AUTO", "UPDATE")
+		dtRangeType = statistics.DateRangeAuto
 	} else {
 		reportName = fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
+		dtRangeType = statistics.DateRangeCustomDate
 	}
 
 	params := statistics.ReportDefinition{
