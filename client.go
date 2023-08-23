@@ -85,7 +85,7 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
+func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
 	t := time.Now().Format("2006-01-02")
 	var reportName string
 	var dtRangeType statistics.DateRangeType
@@ -112,7 +112,6 @@ func (c *Client) GetReport(titleRequest, dir string, typeReport statistics.Repor
 		IncludeVAT:    common.YES,
 	}
 
-	ctx := context.Background()
 	for {
 		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
