@@ -109,7 +109,7 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		ReportType:    typeReport,
 		DateRangeType: dtRangeType,
 		Format:        common.FormatTSV,
-		IncludeVAT:    common.YES,
+		IncludeVAT:    common.NO,
 	}
 
 	for {
@@ -171,7 +171,6 @@ type Response struct {
 
 func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
 	reqContent := Request{Params: params}
-
 	body, err := json.Marshal(reqContent)
 	if err != nil {
 		return nil, err
