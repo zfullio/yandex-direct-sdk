@@ -111,8 +111,8 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.NO,
 	}
-
-	for {
+	ATTMEPTS := 5
+	for ATTMEPTS != 0 {
 		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
 			return "", fmt.Errorf("createGetReportRequest: %w", err)
@@ -140,7 +140,9 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 				return "", fmt.Errorf("waitInit: %w", err)
 			}
 		case http.StatusInternalServerError:
-			return "", fmt.Errorf("internal server error")
+			ATTMEPTS--
+			time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
+			fmt.Println("Request in SDK: ", resp.StatusCode)
 		case http.StatusBadRequest:
 			fmt.Println(resp.Status)
 
@@ -154,6 +156,8 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 			return "", fmt.Errorf("cтатус код сервера при получении отчета %v", resp.StatusCode)
 		}
 	}
+	return "", fmt.Errorf("internal server error")
+
 }
 
 type Request struct {
