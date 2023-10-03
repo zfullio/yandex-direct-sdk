@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mg-realcom/yandex-direct-sdk/common"
 	"github.com/mg-realcom/yandex-direct-sdk/statistics"
+	"github.com/rs/zerolog"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strconv"
 	"time"
@@ -21,6 +24,7 @@ type Client struct {
 	App             *App
 	host            environment
 	statisticsLimit statisticsLimits
+	logger          *zerolog.Logger
 }
 
 type App struct {
@@ -111,17 +115,23 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.NO,
 	}
-	ATTMEPTS := 5
-	for ATTMEPTS != 0 {
+	for {
 		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
 			return "", fmt.Errorf("createGetReportRequest: %w", err)
 		}
-
 		c.waitInfo(reportName)
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
 
+		reqDump, _ := httputil.DumpRequestOut(req, true)
+		c.logger.Printf("req: ", time.Now().Format("2006-01-02 15:04:05"), req.URL.Path, "\n")
+		c.logger.Printf("REQUEST:\n%s", string(reqDump))
+
 		resp, err := c.Tr.Do(req)
+		respDump, _ := httputil.DumpResponse(resp, true)
+		c.logger.Printf("resp: ", time.Now().Format("2006-01-02 15:04:05"))
+		c.logger.Printf("RESPONSE:\n%s", string(respDump))
+
 		if err != nil {
 			return "", fmt.Errorf("do request: %w", err)
 		}
@@ -140,11 +150,8 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 				return "", fmt.Errorf("waitInit: %w", err)
 			}
 		case http.StatusInternalServerError:
-			ATTMEPTS--
-			time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
-			fmt.Println("Request in SDK: ", resp.StatusCode)
+			return "", errors.New("internal server error")
 		case http.StatusBadRequest:
-			fmt.Println(resp.Status)
 
 			data, err := c.badRequestPrepare(resp)
 			if err != nil {
@@ -156,7 +163,6 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 			return "", fmt.Errorf("cтатус код сервера при получении отчета %v", resp.StatusCode)
 		}
 	}
-	return "", fmt.Errorf("internal server error")
 
 }
 
@@ -176,6 +182,7 @@ type Response struct {
 func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
 	reqContent := Request{Params: params}
 	body, err := json.Marshal(reqContent)
+	fmt.Println("body: ", string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -229,11 +236,11 @@ func (c *Client) waitInit(resp *http.Response) error {
 
 func (c *Client) waitInfo(reportName string) {
 	if c.statisticsLimit.retryInterval > 1 {
-		fmt.Printf("Повтор запроса на отчет %s через %v\n", reportName, c.statisticsLimit.retryInterval)
+		c.logger.Info().Msg(fmt.Sprintf("Повтор запроса на отчет %s через %v\n", reportName, c.statisticsLimit.retryInterval))
 	}
 
 	if c.statisticsLimit.reportsInQueue > 1 {
-		fmt.Printf("Количество отчетов в очереди %v\n", c.statisticsLimit.reportsInQueue)
+		c.logger.Info().Msg(fmt.Sprintf("Количество отчетов в очереди %v\n", c.statisticsLimit.reportsInQueue))
 	}
 }
 
