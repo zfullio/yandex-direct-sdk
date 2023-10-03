@@ -125,12 +125,11 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
 
 		reqDump, _ := httputil.DumpRequestOut(req, true)
-		c.logger.Info().Msg(fmt.Sprintf("req: ", time.Now().Format("2006-01-02 15:04:05"), req.URL.Path, "\n"))
+		c.logger.Info().Msg(fmt.Sprintf("req: %s, %s ", req.URL.Path, time.Now().Format("2006-01-02 15:04:05")))
 		c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", string(reqDump)))
 
 		resp, err := c.Tr.Do(req)
 		respDump, _ := httputil.DumpResponse(resp, true)
-		c.logger.Info().Msg(fmt.Sprintf("resp: ", time.Now().Format("2006-01-02 15:04:05")))
 		c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", string(respDump)))
 
 		if err != nil {
@@ -182,7 +181,6 @@ type Response struct {
 func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
 	reqContent := Request{Params: params}
 	body, err := json.Marshal(reqContent)
-	fmt.Println("body: ", string(body))
 	if err != nil {
 		return nil, err
 	}
