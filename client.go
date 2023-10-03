@@ -44,7 +44,7 @@ const (
 	SANDBOX environment = "api-sandbox.direct.yandex.com"
 )
 
-func NewClient(tr *http.Client, login string, token *string, app *App, sandbox bool) *Client {
+func NewClient(tr *http.Client, login string, token *string, app *App, sandbox bool, logger *zerolog.Logger) *Client {
 	if sandbox {
 		return &Client{
 			Login: login,
@@ -63,6 +63,7 @@ func NewClient(tr *http.Client, login string, token *string, app *App, sandbox b
 			retryInterval:  0,
 			reportsInQueue: 0,
 		},
+		logger: logger,
 	}
 }
 
@@ -142,7 +143,6 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 			if err != nil {
 				return "", fmt.Errorf("createTSVFile: %w", err)
 			}
-
 			return file, nil
 		case http.StatusCreated, http.StatusAccepted:
 			err := c.waitInit(resp)
