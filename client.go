@@ -123,19 +123,12 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		}
 		c.waitInfo(reportName)
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
-
-		reqDump, _ := httputil.DumpRequestOut(req, true)
-		c.logger.Info().Msg(fmt.Sprintf("req: %s, %s ", req.URL.Path, time.Now().Format("2006-01-02 15:04:05")))
-		c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", string(reqDump)))
-
 		resp, err := c.Tr.Do(req)
+		reqDump, _ := httputil.DumpRequestOut(req, true)
 		respDump, _ := httputil.DumpResponse(resp, true)
-		c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", string(respDump)))
-
 		if err != nil {
 			return "", fmt.Errorf("do request: %w", err)
 		}
-
 		switch resp.StatusCode {
 		case http.StatusOK:
 			file, err := createTSVFile(dir, reportName, resp)
@@ -149,6 +142,9 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 				return "", fmt.Errorf("waitInit: %w", err)
 			}
 		case http.StatusInternalServerError:
+			c.logger.Info().Msg(fmt.Sprintf("req: %s, %s ", req.URL.Path, time.Now().Format("2006-01-02 15:04:05")))
+			c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", string(reqDump)))
+			c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", string(respDump)))
 			return "", errors.New("internal server error")
 		case http.StatusBadRequest:
 
