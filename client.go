@@ -125,13 +125,13 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
 
 		reqDump, _ := httputil.DumpRequestOut(req, true)
-		c.logger.Printf("req: ", time.Now().Format("2006-01-02 15:04:05"), req.URL.Path, "\n")
-		c.logger.Printf("REQUEST:\n%s", string(reqDump))
+		c.logger.Info().Msg(fmt.Sprintf("req: ", time.Now().Format("2006-01-02 15:04:05"), req.URL.Path, "\n"))
+		c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", string(reqDump)))
 
 		resp, err := c.Tr.Do(req)
 		respDump, _ := httputil.DumpResponse(resp, true)
-		c.logger.Printf("resp: ", time.Now().Format("2006-01-02 15:04:05"))
-		c.logger.Printf("RESPONSE:\n%s", string(respDump))
+		c.logger.Info().Msg(fmt.Sprintf("resp: ", time.Now().Format("2006-01-02 15:04:05")))
+		c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", string(respDump)))
 
 		if err != nil {
 			return "", fmt.Errorf("do request: %w", err)
@@ -253,18 +253,11 @@ func createTSVFile(dir string, filename string, resp *http.Response) (string, er
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
 	}
-
 	defer f.Close()
-
-	responseBody, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
+		return "", err
 	}
-
-	err = os.WriteFile(f.Name(), responseBody, 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to write to file: %w", err)
-	}
-
 	return f.Name(), nil
 }
