@@ -142,7 +142,8 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 				return "", fmt.Errorf("waitInit: %w", err)
 			}
 		case http.StatusInternalServerError:
-			c.logger.Info().Msg(fmt.Sprintf("req: %s, %s ", req.URL.Path, time.Now().Format("2006-01-02 15:04:05")))
+			rj, _ := json.Marshal(req)
+			c.logger.Info().Msg(fmt.Sprintf("req: %s, %s", string(rj), time.Now().Format("2006-01-02 15:04:05")))
 			c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", string(reqDump)))
 			c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", string(respDump)))
 			return "", errors.New("internal server error")
