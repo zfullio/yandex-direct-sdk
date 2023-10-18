@@ -108,8 +108,8 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 			DateTo:   dateRange.To,
 			Filter:   filter,
 		},
-		FieldNames:    fields,
-		Page:          &common.Page{Limit: 10000000, Offset: 0},
+		FieldNames: fields,
+		//Page:          &common.Page{Limit: 2000, Offset: 492_500},
 		ReportName:    reportName,
 		ReportType:    typeReport,
 		DateRangeType: dtRangeType,
@@ -160,6 +160,7 @@ func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeRe
 }
 
 type Request struct {
+	Method string                      `json:"method"`
 	Params statistics.ReportDefinition `json:"params"`
 }
 
@@ -173,7 +174,7 @@ type Response struct {
 }
 
 func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
-	reqContent := Request{Params: params}
+	reqContent := Request{Params: params, Method: "get"}
 	body, err := json.Marshal(reqContent)
 	if err != nil {
 		return nil, err
