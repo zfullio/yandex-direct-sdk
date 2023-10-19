@@ -90,77 +90,102 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(ctx context.Context, titleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) (string, error) {
+func (c *Client) GetReport(ctx context.Context, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) ([]string, error) {
 	t := time.Now().Format("2006-01-02")
 	var reportName string
 	var dtRangeType statistics.DateRangeType
+
 	if dateRange.From == "" || dateRange.To == "" {
-		reportName = fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, "AUTO", "UPDATE")
+		reportName = fmt.Sprintf("%s_%s_%s_%s", c.Login, t, "AUTO", "UPDATE")
 		dtRangeType = statistics.DateRangeAuto
 	} else {
-		reportName = fmt.Sprintf("%s_%s_%s_%s_%s_%s", c.Login, typeReport, t, titleRequest, dateRange.From, dateRange.To)
+		reportName = fmt.Sprintf("%s_%s_%s_%s", c.Login, dateRange.From, dateRange.To, t)
 		dtRangeType = statistics.DateRangeCustomDate
 	}
-
+	if filter == nil {
+		reportName += "_dict"
+	}
 	params := statistics.ReportDefinition{
 		Selection: &statistics.SelectionCriteria{
 			DateFrom: dateRange.From,
 			DateTo:   dateRange.To,
 			Filter:   filter,
 		},
-		FieldNames: fields,
-		//Page:          &common.Page{Limit: 2000, Offset: 492_500},
+		FieldNames:    fields,
+		Page:          &common.Page{Limit: 100_000, Offset: 0},
 		ReportName:    reportName,
 		ReportType:    typeReport,
 		DateRangeType: dtRangeType,
 		Format:        common.FormatTSV,
 		IncludeVAT:    common.NO,
 	}
+
+	fileNames, err := c.GetFiles(ctx, dir, params)
+	if err != nil {
+		return nil, err
+	}
+	return fileNames, nil
+}
+
+func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.ReportDefinition) ([]string, error) {
+	var result []string
+	part := 1
+	params.ReportName += fmt.Sprintf("_part_%d", part)
 	for {
 		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
-			return "", fmt.Errorf("createGetReportRequest: %w", err)
+			return result, fmt.Errorf("createGetReportRequest: %w", err)
 		}
 		reqDump, _ := httputil.DumpRequestOut(req, true)
-		c.waitInfo(reportName)
+		c.waitInfo(params.ReportName)
 		time.Sleep(time.Duration(c.statisticsLimit.retryInterval) * time.Second)
 		resp, err := c.Tr.Do(req)
 		if err != nil {
-			return "", fmt.Errorf("do request: %w", err)
+			return result, fmt.Errorf("do request: %w", err)
 		}
 		respDump, _ := httputil.DumpResponse(resp, true)
 
 		switch resp.StatusCode {
 		case http.StatusOK:
-			file, err := createTSVFile(dir, reportName, resp)
+			lengthCont, err := strconv.Atoi(resp.Header.Get("X-Data-Size"))
 			if err != nil {
-				return "", fmt.Errorf("createTSVFile: %w", err)
+				return result, fmt.Errorf("X-Data-Size: %w", err)
 			}
-			return file, nil
+			if lengthCont > 252 {
+				file, err := createTSVFile(dir, params.ReportName, resp)
+				if err != nil {
+					return result, fmt.Errorf("createTSVFile: %w", err)
+				}
+				result = append(result, file)
+				params.Page.Offset += params.Page.Limit
+				part++
+				params.ReportName = params.ReportName[:len(params.ReportName)-6] + fmt.Sprintf("part_%d", part)
+				continue
+			} else {
+				return result, nil
+			}
 		case http.StatusCreated, http.StatusAccepted:
 			err := c.waitInit(resp)
 			if err != nil {
-				return "", fmt.Errorf("waitInit: %w", err)
+				return result, fmt.Errorf("waitInit: %w", err)
 			}
 		case http.StatusInternalServerError:
 			c.logger.Info().Msg(fmt.Sprintf("REQUEST:\n%s", reqDump))
 			c.logger.Info().Msg(fmt.Sprintf("RESPONSE:\n%s", respDump))
-			return "", errors.New("internal server error")
+			return result, errors.New("internal server error")
 		case http.StatusBadRequest:
 			data, err := c.badRequestPrepare(resp)
 			if err != nil {
-				return "", fmt.Errorf("cannot prepare bad request: %w", err)
+				return result, fmt.Errorf("cannot prepare bad request: %w", err)
 			}
-			return "", fmt.Errorf("ошибка отчета %s", data.Error.ErrorDetail)
+			return result, fmt.Errorf("ошибка отчета %s", data.Error.ErrorDetail)
 		default:
-			return "", fmt.Errorf("cтатус код сервера при получении отчета %v", resp.StatusCode)
+			return result, fmt.Errorf("cтатус код сервера при получении отчета %v", resp.StatusCode)
 		}
 	}
-
 }
 
 type Request struct {
-	Method string                      `json:"method"`
 	Params statistics.ReportDefinition `json:"params"`
 }
 
@@ -174,7 +199,7 @@ type Response struct {
 }
 
 func (c *Client) createGetReportRequest(ctx context.Context, params statistics.ReportDefinition) (*http.Request, error) {
-	reqContent := Request{Params: params, Method: "get"}
+	reqContent := Request{Params: params}
 	body, err := json.Marshal(reqContent)
 	if err != nil {
 		return nil, err
@@ -238,16 +263,18 @@ func (c *Client) waitInfo(reportName string) {
 }
 
 func createTSVFile(dir string, filename string, resp *http.Response) (string, error) {
+
 	if resp == nil {
 		return "", fmt.Errorf("response is nil")
 	}
+	defer resp.Body.Close()
 
 	f, err := os.CreateTemp(dir, fmt.Sprintf("%s_*.tsv", filename))
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %w", err)
 	}
 	defer f.Close()
-	defer resp.Body.Close()
+
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
 		return "", err
