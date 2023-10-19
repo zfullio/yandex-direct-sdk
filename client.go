@@ -119,7 +119,7 @@ func (c *Client) GetReport(ctx context.Context, prefixTitleRequest, dir string, 
 
 	fileNames, err := c.GetFiles(ctx, dir, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetFiles for %s – %w", c.Login, err)
 	}
 	return fileNames, nil
 }
@@ -144,6 +144,9 @@ func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.Rep
 
 		switch resp.StatusCode {
 		case http.StatusOK:
+			if resp.Header.Get("X-Data-Size") == "" {
+				return result, nil
+			}
 			lengthCont, err := strconv.Atoi(resp.Header.Get("X-Data-Size"))
 			if err != nil {
 				return result, fmt.Errorf("X-Data-Size: %w", err)
