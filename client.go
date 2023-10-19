@@ -90,20 +90,17 @@ type Payload struct {
 	} `json:"params"`
 }
 
-func (c *Client) GetReport(ctx context.Context, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) ([]string, error) {
+func (c *Client) GetReport(ctx context.Context, prefixTitleRequest, dir string, typeReport statistics.ReportType, fields []string, filter []statistics.Filter, dateRange statistics.DateRange) ([]string, error) {
 	t := time.Now().Format("2006-01-02")
 	var reportName string
 	var dtRangeType statistics.DateRangeType
 
 	if dateRange.From == "" || dateRange.To == "" {
-		reportName = fmt.Sprintf("%s_%s_%s_%s", c.Login, t, "AUTO", "UPDATE")
+		reportName = fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, prefixTitleRequest, t, "AUTO", "UPDATE")
 		dtRangeType = statistics.DateRangeAuto
 	} else {
-		reportName = fmt.Sprintf("%s_%s_%s_%s", c.Login, dateRange.From, dateRange.To, t)
+		reportName = fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, prefixTitleRequest, dateRange.From, dateRange.To, t)
 		dtRangeType = statistics.DateRangeCustomDate
-	}
-	if filter == nil {
-		reportName += "_dict"
 	}
 	params := statistics.ReportDefinition{
 		Selection: &statistics.SelectionCriteria{
