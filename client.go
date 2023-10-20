@@ -95,13 +95,8 @@ func (c *Client) GetReport(ctx context.Context, prefixTitleRequest, dir string, 
 	var reportName string
 	var dtRangeType statistics.DateRangeType
 
-	if dateRange.From == "" || dateRange.To == "" {
-		reportName = fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, prefixTitleRequest, t, "AUTO", "UPDATE")
-		dtRangeType = statistics.DateRangeAuto
-	} else {
-		reportName = fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, prefixTitleRequest, dateRange.From, dateRange.To, t)
-		dtRangeType = statistics.DateRangeCustomDate
-	}
+	reportName = fmt.Sprintf("%s_%s_%s_%s_%s", c.Login, prefixTitleRequest, dateRange.From, dateRange.To, t)
+	dtRangeType = statistics.DateRangeCustomDate
 	params := statistics.ReportDefinition{
 		Selection: &statistics.SelectionCriteria{
 			DateFrom: dateRange.From,
@@ -109,7 +104,7 @@ func (c *Client) GetReport(ctx context.Context, prefixTitleRequest, dir string, 
 			Filter:   filter,
 		},
 		FieldNames:    fields,
-		Page:          &common.Page{Limit: 100_000, Offset: 0},
+		Page:          &common.Page{Limit: 50_000, Offset: 0},
 		ReportName:    reportName,
 		ReportType:    typeReport,
 		DateRangeType: dtRangeType,
@@ -127,6 +122,7 @@ func (c *Client) GetReport(ctx context.Context, prefixTitleRequest, dir string, 
 func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.ReportDefinition) ([]string, error) {
 	var result []string
 	part := 1
+	reportName := params.ReportName
 	params.ReportName += fmt.Sprintf("_part_%d", part)
 	for {
 		req, err := c.createGetReportRequest(ctx, params)
@@ -159,7 +155,7 @@ func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.Rep
 				result = append(result, file)
 				params.Page.Offset += params.Page.Limit
 				part++
-				params.ReportName = params.ReportName[:len(params.ReportName)-6] + fmt.Sprintf("part_%d", part)
+				params.ReportName = reportName + fmt.Sprintf("_part_%d", part)
 				continue
 			} else {
 				return result, nil
