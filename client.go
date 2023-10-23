@@ -140,14 +140,17 @@ func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.Rep
 
 		switch resp.StatusCode {
 		case http.StatusOK:
-			if resp.Header.Get("X-Data-Size") == "" {
-				return result, nil
+			fieldsSize := 0
+			for _, field := range params.FieldNames {
+				fieldsSize += len([]byte(field))
 			}
-			lengthCont, err := strconv.Atoi(resp.Header.Get("X-Data-Size"))
-			if err != nil {
-				return result, fmt.Errorf("X-Data-Size: %w", err)
+			fieldsSize += len(params.FieldNames)
+			buffer := make([]byte, 4096)
+			n, err := resp.Body.Read(buffer)
+			if err != nil && err != io.EOF {
+				return result, err
 			}
-			if lengthCont > 252 {
+			if n > fieldsSize {
 				file, err := createTSVFile(dir, params.ReportName, resp)
 				if err != nil {
 					return result, fmt.Errorf("createTSVFile: %w", err)
