@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 )
 
@@ -41,17 +40,16 @@ type Token struct {
 	Scope        string `json:"scope"`
 }
 
-func (c *client) Authorise() error {
+func (c *Client) Authorise(message chan<- string) error {
 	authData, err := c.GetAccessCode()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("user code: %s | %s \n", authData.UserCode, authData.VerificationURL)
-
+	message <- fmt.Sprintf("user code: %s | %s \n", authData.UserCode, authData.VerificationURL)
 	token := Token{}
 	done := make(chan bool, 1)
-	duration := time.Duration(authData.Interval) * time.Second
+	duration := time.Duration(authData.Interval)*time.Second + 20*time.Second
 	ticker := time.NewTicker(duration)
 
 	defer ticker.Stop()
@@ -60,6 +58,8 @@ outerLoop:
 	for {
 		select {
 		case <-done:
+			message <- "nil"
+			close(message)
 			return nil
 		case <-ticker.C:
 			token, err = c.GetTokenByCode(authData)
@@ -78,24 +78,28 @@ outerLoop:
 		}
 	}
 
-	file, err := os.Create(fmt.Sprintf("%s.txt", c.Login))
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
+	//file, err := os.Create(fmt.Sprintf("%s.txt", c.Login))
+	//if err != nil {
+	//	message <- err.Error()
+	//	close(message)
+	//	return fmt.Errorf("failed to create file: %w", err)
+	//}
+	//
+	//defer file.Close()
 
-	defer file.Close()
-
-	_, err = file.WriteString(token.AccessToken)
-	if err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
-	}
-
-	fmt.Println(token.AccessToken)
+	//_, err = file.WriteString(token.AccessToken)
+	//if err != nil {
+	//	message <- err.Error()
+	//	close(message)
+	//	return fmt.Errorf("failed to write to file: %w", err)
+	//}
+	message <- "token: " + token.AccessToken
+	close(message)
 
 	return nil
 }
 
-func (c *client) GetAccessCode() (auth AuthByCode, err error) {
+func (c *Client) GetAccessCode() (auth AuthByCode, err error) {
 	host := "oauth.yandex.ru"
 
 	reqAccessURL := url.URL{
@@ -129,7 +133,7 @@ func (c *client) GetAccessCode() (auth AuthByCode, err error) {
 	return auth, err
 }
 
-func (c *client) GetTokenByCode(code AuthByCode) (token Token, err error) {
+func (c *Client) GetTokenByCode(code AuthByCode) (token Token, err error) {
 	host := "oauth.yandex.ru"
 
 	reqAccessURL := url.URL{
