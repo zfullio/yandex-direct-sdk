@@ -17,15 +17,15 @@ type SelectionCriteria struct {
 }
 
 type Requests struct {
-	Yclid uint64 `json:"Yclid"`
-	//Email string `json:"Email"`
-	//Phone string `json:"Phone"`
+	Yclid string `json:"Yclid"`
+	Email string `json:"Email,omitempty"`
+	Phone string `json:"Phone,omitempty"`
 }
 
 type Response struct {
 	Result struct {
 		ConversionScores []struct {
-			Yclid int64       `json:"Yclid"`
+			Yclid string      `json:"Yclid"`
 			Email interface{} `json:"Email"`
 			Phone interface{} `json:"Phone"`
 			Score int         `json:"Score"`

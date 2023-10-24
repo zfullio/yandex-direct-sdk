@@ -124,6 +124,11 @@ func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.Rep
 	part := 1
 	reportName := params.ReportName
 	params.ReportName += fmt.Sprintf("_part_%d", part)
+	fieldsSize := 0
+	for _, field := range params.FieldNames {
+		fieldsSize += len([]byte(field))
+	}
+	fieldsSize += len(params.FieldNames)
 	for {
 		req, err := c.createGetReportRequest(ctx, params)
 		if err != nil {
@@ -140,27 +145,18 @@ func (c *Client) GetFiles(ctx context.Context, dir string, params statistics.Rep
 
 		switch resp.StatusCode {
 		case http.StatusOK:
-			fieldsSize := 0
-			for _, field := range params.FieldNames {
-				fieldsSize += len([]byte(field))
+			file, fileSize, err := createTSVFile(dir, params.ReportName, resp)
+			if err != nil {
+				return result, fmt.Errorf("createTSVFile: %w", err)
 			}
-			fieldsSize += len(params.FieldNames)
-			buffer := make([]byte, 4096)
-			n, err := resp.Body.Read(buffer)
-			if err != nil && err != io.EOF {
-				return result, err
-			}
-			if n > fieldsSize {
-				file, err := createTSVFile(dir, params.ReportName, resp)
-				if err != nil {
-					return result, fmt.Errorf("createTSVFile: %w", err)
-				}
+			if fieldsSize < fileSize {
 				result = append(result, file)
 				params.Page.Offset += params.Page.Limit
 				part++
 				params.ReportName = reportName + fmt.Sprintf("_part_%d", part)
 				continue
 			} else {
+				_ = os.Remove(file)
 				return result, nil
 			}
 		case http.StatusCreated, http.StatusAccepted:
@@ -261,22 +257,24 @@ func (c *Client) waitInfo(reportName string) {
 	}
 }
 
-func createTSVFile(dir string, filename string, resp *http.Response) (string, error) {
+func createTSVFile(dir string, filename string, resp *http.Response) (string, int, error) {
 
 	if resp == nil {
-		return "", fmt.Errorf("response is nil")
+		return "", 0, fmt.Errorf("response is nil")
 	}
 	defer resp.Body.Close()
 
 	f, err := os.CreateTemp(dir, fmt.Sprintf("%s_*.tsv", filename))
 	if err != nil {
-		return "", fmt.Errorf("failed to create file: %w", err)
+		return "", 0, fmt.Errorf("failed to create file: %w", err)
 	}
 	defer f.Close()
 
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return f.Name(), nil
+	stat, _ := f.Stat()
+	size := stat.Size()
+	return f.Name(), int(size), nil
 }
